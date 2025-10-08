@@ -1,5 +1,5 @@
-// Image Service for resize.imgview.deno.net
-console.log("🚀 Image Service for resize.imgview.deno.net Starting...");
+// Simple Image Proxy Service - Bebas pilih gambar
+console.log("🚀 Image Proxy Service Started");
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
@@ -15,102 +15,98 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers });
   }
 
-  // Route handlers
+  // Health check
   if (path === '/health') {
     return Response.json({
       status: 'ok',
-      service: 'Image Service',
-      domain: 'resize.imgview.deno.net',
-      timestamp: new Date().toISOString()
-    }, { headers });
-  }
-
-  if (path === '/stats') {
-    return Response.json({
-      domain: 'resize.imgview.deno.net',
+      service: 'Image Proxy',
       message: 'Service is running'
     }, { headers });
   }
 
-  // Main image endpoint - /view
-  if (path === '/view') {
-    return await handleImageView(url, headers);
-  }
-
-  // Root endpoint - redirect to view or show info
+  // Main image proxy endpoint - bebas pilih gambar
   if (path === '/') {
-    return Response.json({
-      service: 'Image View Service',
-      domain: 'resize.imgview.deno.net',
-      endpoints: {
-        view: '/view - Show the chicken image',
-        view_custom: '/view?url=IMAGE_URL - Show custom image',
-        health: '/health - Health check'
-      },
-      example: 'https://resize.imgview.deno.net/view'
-    }, { headers });
+    const imageUrl = url.searchParams.get('url');
+    
+    if (!imageUrl) {
+      // Show usage info jika tidak ada parameter
+      return Response.json({
+        service: 'Image Proxy Service',
+        usage: 'Tambahkan parameter ?url=GAMBAR_URL',
+        examples: {
+          contoh1: '/?url=https://example.com/image.jpg',
+          contoh2: '/?url=https://picsum.photos/400/300',
+          contoh3: '/?url=https://kiryuu02.com/wp-content/uploads/2021/04/niwatori-fighter-459997-HAsjbASi.jpg'
+        },
+        tips: 'Gunakan URL gambar langsung yang diawali dengan https://'
+      }, { headers });
+    }
+
+    return await fetchAndProxyImage(imageUrl, headers);
   }
 
   // Not found
   return Response.json({
-    error: 'Endpoint not found',
-    try: '/view to see the chicken image'
+    error: 'Gunakan endpoint root dengan parameter url',
+    example: '/?url=https://example.com/image.jpg'
   }, { status: 404, headers });
 });
 
-// Image viewer - default ke gambar ayam kiryuu02
-async function handleImageView(url: URL, baseHeaders: any): Promise<Response> {
-  const imageUrl = url.searchParams.get('url');
-  
-  // Jika tidak ada URL parameter, gunakan gambar ayam dari kiryuu02
-  const targetUrl = imageUrl || 'https://kiryuu02.com/wp-content/uploads/2021/04/niwatori-fighter-459997-HAsjbASi.jpg';
-  
-  console.log(`🔄 Fetching image: ${targetUrl}`);
+// Fungsi untuk fetch dan proxy gambar
+async function fetchAndProxyImage(imageUrl: string, baseHeaders: any): Promise<Response> {
+  console.log(`📸 Fetching: ${imageUrl}`);
   
   try {
-    const response = await fetch(targetUrl, {
+    // Validasi URL
+    new URL(imageUrl);
+    
+    // Fetch gambar
+    const response = await fetch(imageUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Deno-Image-Viewer/1.0)',
-        'Referer': 'https://kiryuu02.com/'
+        'User-Agent': 'Mozilla/5.0 (Image-Proxy/1.0)'
       }
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    // Get content type
+    const contentType = response.headers.get('content-type');
+    
+    // Check if it's an image
+    if (!contentType?.startsWith('image/')) {
+      throw new Error('URL bukan gambar yang valid');
     }
 
     const imageData = await response.arrayBuffer();
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
-
+    
     console.log(`✅ Success: ${imageData.byteLength} bytes, ${contentType}`);
 
+    // Return sebagai image
     return new Response(imageData, {
       headers: {
         ...baseHeaders,
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=3600',
-        'X-Image-Source': targetUrl,
-        'X-Service-Domain': 'resize.imgview.deno.net'
+        'X-Proxy-Service': 'resize.imgview.deno.net'
       }
     });
 
   } catch (error) {
-    console.error(`❌ Error fetching image: ${error.message}`);
+    console.error(`❌ Error: ${error.message}`);
     
-    // Fallback - return error as JSON
     return Response.json({
-      error: 'Failed to fetch image',
-      url: targetUrl,
+      error: 'Gagal memuat gambar',
       message: error.message,
-      domain: 'resize.imgview.deno.net'
+      usage: 'Gunakan URL gambar yang valid seperti: https://example.com/image.jpg'
     }, { 
-      status: 500, 
+      status: 400, 
       headers: baseHeaders 
     });
   }
 }
 
-console.log("✅ Image Service Ready!");
+console.log("✅ Service Ready!");
 console.log("🌐 Domain: resize.imgview.deno.net");
-console.log("📸 Endpoint: GET /view - Shows the chicken image");
-console.log("🔧 Health: GET /health");
+console.log("📖 Usage: /?url=GAMBAR_URL");
