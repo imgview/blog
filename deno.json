@@ -1,6 +1,5 @@
 {
   "tasks": {
-    "dev": "deno run --allow-net --allow-env mod.ts",
-    "deploy": "deployctl deploy --project=my-image-resize mod.ts"
+    "dev": "deno run --allow-net --allow-env mod.ts"
   }
 }
