@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "sharp": "https://deno.land/x/sharp@0.32.0/src/mod.ts",
+    "std/": "https://deno.land/std@0.200.0/"
+  }
+}
