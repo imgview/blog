@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.200.0/http/server.ts";
-import { resizeImage } from "./resize.ts";
+import { resizeImage } from "./resize.ts";  // Pastikan ini dari resize.ts, bukan file lama
 import type { ResizeParams, ErrorResponse } from "./types.ts";
 
-console.log("Image Resize Service started with ImageMagick WASM");
+console.log("Starting Image Resize Service with ImageMagick WASM");
 
 serve(async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
@@ -24,7 +24,7 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         status: 'ok', 
-        service: 'Image Resize',
+        service: 'Image Resize - ImageMagick WASM',
         timestamp: new Date().toISOString() 
       }), {
         headers: { 
@@ -82,19 +82,6 @@ async function handleImageResize(url: URL, corsHeaders: any): Promise<Response> 
       return jsonError('Maximum dimension size is 4000px', 400, corsHeaders);
     }
     
-    // Validate quality
-    if (quality < 1 || quality > 100) {
-      return jsonError('Quality must be between 1 and 100', 400, corsHeaders);
-    }
-    
-    // Validate format
-    const allowedFormats = ['jpeg', 'png', 'webp'];
-    if (!allowedFormats.includes(format)) {
-      return jsonError(`Format must be one of: ${allowedFormats.join(', ')}`, 400, corsHeaders);
-    }
-    
-    console.log(`Processing image: ${imageUrl}, ${width}x${height}, ${format}`);
-    
     // Process image
     const params: ResizeParams = {
       url: imageUrl,
@@ -112,7 +99,7 @@ async function handleImageResize(url: URL, corsHeaders: any): Promise<Response> 
     return new Response(resizedImage, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
+        'Cache-Control': 'public, max-age=86400',
         ...corsHeaders
       }
     });
@@ -126,6 +113,7 @@ async function handleImageResize(url: URL, corsHeaders: any): Promise<Response> 
 function getContentType(format: string): string {
   const types: { [key: string]: string } = {
     jpeg: 'image/jpeg',
+    jpg: 'image/jpeg',
     png: 'image/png', 
     webp: 'image/webp'
   };
@@ -145,4 +133,4 @@ function jsonError(message: string, status: number = 500, corsHeaders: any = {})
       ...corsHeaders
     }
   });
-}
+  }
