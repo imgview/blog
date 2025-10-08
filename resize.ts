@@ -6,10 +6,20 @@ import {
 } from "imagemagick";
 import type { ResizeParams } from "./types.ts";
 
-// Initialize ImageMagick on module load
-await initializeImageMagick();
+// Initialize ImageMagick - ini penting!
+let initialized = false;
+
+async function ensureInitialized() {
+  if (!initialized) {
+    await initializeImageMagick();
+    initialized = true;
+    console.log("ImageMagick initialized successfully");
+  }
+}
 
 export async function resizeImage(params: ResizeParams): Promise<Uint8Array> {
+  await ensureInitialized();
+
   const { url, width, height, quality = 80, format = 'jpeg' } = params;
 
   // Validate dimensions
@@ -18,18 +28,22 @@ export async function resizeImage(params: ResizeParams): Promise<Uint8Array> {
   if (!width && !height) throw new Error('Either width or height is required');
 
   // Fetch original image
+  console.log(`Fetching image from: ${url}`);
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch image: ${response.statusText}`);
   }
 
   const imageBuffer = new Uint8Array(await response.arrayBuffer());
+  console.log(`Image fetched, size: ${imageBuffer.length} bytes`);
 
   // Process image with ImageMagick
   return await new Promise<Uint8Array>((resolve, reject) => {
     try {
       ImageMagick.read(imageBuffer, (img) => {
         try {
+          console.log(`Original dimensions: ${img.width}x${img.height}`);
+          
           // Calculate target dimensions maintaining aspect ratio
           let targetWidth = width || img.width;
           let targetHeight = height || img.height;
@@ -42,14 +56,19 @@ export async function resizeImage(params: ResizeParams): Promise<Uint8Array> {
             targetWidth = Math.round((height / img.height) * img.width);
           }
 
+          console.log(`Resizing to: ${targetWidth}x${targetHeight}`);
+          
           // Resize image
           img.resize(new MagickGeometry(targetWidth, targetHeight));
 
           // Set output format
           const outputFormat = getMagickFormat(format);
           
+          console.log(`Encoding to format: ${format}`);
+          
           // Convert to desired format
           img.write(outputFormat, (data) => {
+            console.log(`Image processed successfully, output size: ${data.length} bytes`);
             resolve(data);
           });
         } catch (error) {
@@ -65,6 +84,7 @@ export async function resizeImage(params: ResizeParams): Promise<Uint8Array> {
 function getMagickFormat(format: string): MagickFormat {
   switch (format) {
     case 'jpeg':
+    case 'jpg':
       return MagickFormat.Jpeg;
     case 'png':
       return MagickFormat.Png;
@@ -73,4 +93,4 @@ function getMagickFormat(format: string): MagickFormat {
     default:
       return MagickFormat.Jpeg;
   }
-        }
+            }
