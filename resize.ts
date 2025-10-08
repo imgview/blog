@@ -10,34 +10,26 @@ export async function resizeImage(params: ResizeParams): Promise<Uint8Array> {
     throw new Error(`Failed to fetch image: ${response.statusText}`);
   }
 
-  const imageBuffer = await response.arrayBuffer();
+  const imageBuffer = new Uint8Array(await response.arrayBuffer());
   
-  // Initialize sharp with the image
-  let processor = sharp(imageBuffer);
+  // Process with Sharp
+  let image = sharp(imageBuffer);
   
   // Resize if dimensions provided
   if (width || height) {
-    processor = processor.resize(width, height, {
-      withoutEnlargement: true,
-      fit: 'inside'
+    image = image.resize({
+      width: width || undefined,
+      height: height || undefined,
+      fit: 'inside',
+      withoutEnlargement: true
     });
   }
   
-  // Convert to desired format with quality
-  switch (format) {
-    case 'jpeg':
-      processor = processor.jpeg({ quality });
-      break;
-    case 'png':
-      processor = processor.png({ compressionLevel: 9 });
-      break;
-    case 'webp':
-      processor = processor.webp({ quality });
-      break;
-    case 'avif':
-      processor = processor.avif({ quality });
-      break;
-  }
+  // Set output format and quality
+  const outputOptions: any = {};
+  if (format === 'jpeg') outputOptions.quality = quality;
+  if (format === 'webp') outputOptions.quality = quality;
+  if (format === 'avif') outputOptions.quality = quality;
   
-  return await processor.toBuffer();
-  }
+  return await image[format](outputOptions).toBuffer();
+                         }
