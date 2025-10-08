@@ -1,6 +1,6 @@
 {
   "imports": {
-    "sharp": "https://deno.land/x/sharp@0.33.0/mod.ts",
+    "imagemagick": "https://deno.land/x/imagemagick_deno@0.0.26/mod.ts",
     "std/": "https://deno.land/std@0.200.0/"
   }
 }
