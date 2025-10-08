@@ -1,6 +1,5 @@
 {
   "imports": {
-    "wasm_image": "https://deno.land/x/wasm_image@v1.0.0/mod.ts",
     "std/": "https://deno.land/std@0.200.0/"
   }
 }
