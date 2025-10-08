@@ -1,82 +1,71 @@
+// Gunakan URL langsung tanpa import map
 import {
   ImageMagick,
   initializeImageMagick,
   MagickFormat,
   MagickGeometry
-} from "imagemagick";
+} from "https://deno.land/x/imagemagick_deno@0.0.26/mod.ts";
+
 import type { ResizeParams } from "./types.ts";
 
-// Initialize ImageMagick - ini penting!
+// Initialize ImageMagick
 let initialized = false;
 
 async function ensureInitialized() {
   if (!initialized) {
     await initializeImageMagick();
     initialized = true;
-    console.log("ImageMagick initialized successfully");
+    console.log("ImageMagick initialized");
   }
 }
 
 export async function resizeImage(params: ResizeParams): Promise<Uint8Array> {
   await ensureInitialized();
 
-  const { url, width, height, quality = 80, format = 'jpeg' } = params;
+  const { url, width, height, format = 'jpeg' } = params;
 
-  // Validate dimensions
-  if (width && width <= 0) throw new Error('Width must be positive');
-  if (height && height <= 0) throw new Error('Height must be positive');
-  if (!width && !height) throw new Error('Either width or height is required');
+  // Validate
+  if (!width && !height) {
+    throw new Error('Either width or height is required');
+  }
 
-  // Fetch original image
-  console.log(`Fetching image from: ${url}`);
+  // Fetch image
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch image: ${response.statusText}`);
   }
 
   const imageBuffer = new Uint8Array(await response.arrayBuffer());
-  console.log(`Image fetched, size: ${imageBuffer.length} bytes`);
 
-  // Process image with ImageMagick
   return await new Promise<Uint8Array>((resolve, reject) => {
     try {
       ImageMagick.read(imageBuffer, (img) => {
         try {
-          console.log(`Original dimensions: ${img.width}x${img.height}`);
-          
-          // Calculate target dimensions maintaining aspect ratio
+          // Calculate dimensions
           let targetWidth = width || img.width;
           let targetHeight = height || img.height;
 
           if (width && !height) {
-            // Calculate height based on aspect ratio
             targetHeight = Math.round((width / img.width) * img.height);
           } else if (height && !width) {
-            // Calculate width based on aspect ratio  
             targetWidth = Math.round((height / img.height) * img.width);
           }
 
-          console.log(`Resizing to: ${targetWidth}x${targetHeight}`);
-          
-          // Resize image
+          // Resize
           img.resize(new MagickGeometry(targetWidth, targetHeight));
 
-          // Set output format
+          // Set format
           const outputFormat = getMagickFormat(format);
           
-          console.log(`Encoding to format: ${format}`);
-          
-          // Convert to desired format
           img.write(outputFormat, (data) => {
-            console.log(`Image processed successfully, output size: ${data.length} bytes`);
             resolve(data);
           });
         } catch (error) {
-          reject(new Error(`Image processing failed: ${error.message}`));
+          reject(new Error(`Processing failed: ${error.message}`));
         }
       });
     } catch (error) {
-      reject(new Error(`Failed to read image: ${error.message}`));
+      reject(new Error(`Read failed: ${error.message}`));
     }
   });
 }
@@ -84,7 +73,6 @@ export async function resizeImage(params: ResizeParams): Promise<Uint8Array> {
 function getMagickFormat(format: string): MagickFormat {
   switch (format) {
     case 'jpeg':
-    case 'jpg':
       return MagickFormat.Jpeg;
     case 'png':
       return MagickFormat.Png;
@@ -93,4 +81,4 @@ function getMagickFormat(format: string): MagickFormat {
     default:
       return MagickFormat.Jpeg;
   }
-            }
+                       }
