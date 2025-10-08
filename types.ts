@@ -3,7 +3,7 @@ export interface ResizeParams {
   width?: number;
   height?: number;
   quality?: number;
-  format?: 'jpeg' | 'png' | 'webp' | 'avif';
+  format?: 'jpeg' | 'png' | 'webp';
 }
 
 export interface ErrorResponse {
