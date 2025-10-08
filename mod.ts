@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.200.0/http/server.ts";
-import { resizeImage } from "./resize.ts"; // atau "./resize_simple.ts"
+import { resizeImage } from "./resize_simple.ts";
 import type { ResizeParams, ErrorResponse } from "./types.ts";
 
-console.log("Starting Image Resize Service");
+console.log("🚀 Image Proxy Service Started");
 
 serve(async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
@@ -14,113 +14,80 @@ serve(async (req: Request): Promise<Response> => {
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 
-  // Handle preflight requests
+  // Handle preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
   
-  // Health check endpoint
+  // Health check - sangat sederhana
   if (url.pathname === '/health') {
-    return new Response(
-      JSON.stringify({ 
-        status: 'ok', 
-        service: 'Image Resize - ImageMagick WASM',
-        timestamp: new Date().toISOString() 
-      }), {
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
+    return new Response('OK', {
+      headers: { 
+        'Content-Type': 'text/plain',
+        ...corsHeaders 
       }
-    );
+    });
   }
   
-  // Only allow GET requests for image resize
+  // Only GET for resize
   if (req.method !== 'GET') {
-    return jsonError('Method not allowed. Use GET requests only.', 405, corsHeaders);
+    return jsonError('Method not allowed', 405, corsHeaders);
   }
   
-  // Main image resize endpoint
+  // Resize endpoint
   if (url.pathname === '/resize' || url.pathname === '/') {
-    return await handleImageResize(url, corsHeaders);
+    return await handleResize(url, corsHeaders);
   }
   
-  return jsonError('Endpoint not found. Use /resize or / with parameters.', 404, corsHeaders);
+  return jsonError('Not found. Use /resize?url=IMAGE_URL', 404, corsHeaders);
 });
 
-async function handleImageResize(url: URL, corsHeaders: any): Promise<Response> {
+async function handleResize(url: URL, corsHeaders: any): Promise<Response> {
   try {
-    // Extract parameters from URL
+    // Get parameters
     const imageUrl = url.searchParams.get('url');
     const width = parseInt(url.searchParams.get('width') || '0');
     const height = parseInt(url.searchParams.get('height') || '0');
-    const quality = parseInt(url.searchParams.get('quality') || '80');
-    const format = (url.searchParams.get('format') as 'jpeg' | 'png' | 'webp') || 'jpeg';
-    
-    // Validate required parameters
+
+    // Validation sederhana
     if (!imageUrl) {
-      return jsonError('Missing required parameter: url', 400, corsHeaders);
+      return jsonError('Missing url parameter', 400, corsHeaders);
     }
-    
+
     // Validate URL format
     try {
       new URL(imageUrl);
     } catch {
-      return jsonError('Invalid URL parameter. Provide a valid image URL.', 400, corsHeaders);
+      return jsonError('Invalid URL', 400, corsHeaders);
     }
-    
-    // Validate dimensions
-    if (!width && !height) {
-      return jsonError('Either width or height parameter is required', 400, corsHeaders);
-    }
-    
-    if ((width && width <= 0) || (height && height <= 0)) {
-      return jsonError('Width and height must be positive numbers', 400, corsHeaders);
-    }
-    
-    if (width > 4000 || height > 4000) {
-      return jsonError('Maximum dimension size is 4000px', 400, corsHeaders);
-    }
-    
-    // Process image
+
+    console.log(`Processing request for: ${imageUrl}`);
+
+    // Process image (simple proxy)
     const params: ResizeParams = {
       url: imageUrl,
       width: width || undefined,
       height: height || undefined,
-      quality,
-      format
     };
+
+    const result = await resizeImage(params);
     
-    const resizedImage = await resizeImage(params);
-    
-    // Set appropriate content type
-    const contentType = getContentType(format);
-    
-    return new Response(resizedImage, {
+    // Return as image (detect content type from original)
+    return new Response(result, {
       headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=86400',
+        'Content-Type': 'image/jpeg', // Default, bisa detect nanti
+        'Cache-Control': 'public, max-age=3600',
         ...corsHeaders
       }
     });
-    
+
   } catch (error) {
-    console.error('Error processing image:', error);
-    return jsonError(`Failed to process image: ${error.message}`, 500, corsHeaders);
+    console.error('Error:', error.message);
+    return jsonError(`Proxy failed: ${error.message}`, 500, corsHeaders);
   }
 }
 
-function getContentType(format: string): string {
-  const types: { [key: string]: string } = {
-    jpeg: 'image/jpeg',
-    jpg: 'image/jpeg',
-    png: 'image/png', 
-    webp: 'image/webp'
-  };
-  return types[format] || 'image/jpeg';
-}
-
-function jsonError(message: string, status: number = 500, corsHeaders: any = {}): Response {
+function jsonError(message: string, status: number, corsHeaders: any): Response {
   const error: ErrorResponse = {
     error: `${status}`,
     message
@@ -133,4 +100,4 @@ function jsonError(message: string, status: number = 500, corsHeaders: any = {})
       ...corsHeaders
     }
   });
-  }
+      }
