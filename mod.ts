@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.200.0/http/server.ts";
-import { resizeImage } from "./resize.ts";  // Pastikan ini dari resize.ts, bukan file lama
+import { resizeImage } from "./resize.ts"; // atau "./resize_simple.ts"
 import type { ResizeParams, ErrorResponse } from "./types.ts";
 
-console.log("Starting Image Resize Service with ImageMagick WASM");
+console.log("Starting Image Resize Service");
 
 serve(async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
